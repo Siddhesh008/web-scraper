@@ -24,7 +24,7 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# Puppeteer should use system Chromium
+
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
@@ -34,7 +34,7 @@ WORKDIR /app
 COPY package.json .
 RUN npm install
 
-# Copy application files
+
 COPY scrape.js .
 COPY requirements.txt .
 RUN pip3 install --break-system-packages -r requirements.txt
