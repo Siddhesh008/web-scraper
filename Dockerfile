@@ -1,6 +1,7 @@
-FROM node:20-slim
+# Stage 1: Scraper 
+FROM node:20-slim AS scraper
 
-# Install Chromium, Python3, pip, and Puppeteer dependencies
+# Install Chromium + dependencies
 RUN apt-get update && \
     apt-get install -y \
     chromium \
@@ -19,29 +20,40 @@ RUN apt-get update && \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
-    python3 \
-    python3-pip \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Puppeteer settings
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-# Install Node dependencies
 COPY package.json .
 RUN npm install
-
-
 COPY scrape.js .
+
+# Pass target URL at build-time
+ARG SCRAPE_URL=https://www.wikipedia.org
+ENV SCRAPE_URL=$SCRAPE_URL
+
+
+RUN node scrape.js
+
+# Stage 2: Python Server 
+FROM python:3.10-slim AS server
+
+WORKDIR /app
+
+# Copy the scraped result from scraper stage
+COPY --from=scraper /app/scraped_data.json .
+
+
 COPY requirements.txt .
 RUN pip3 install --break-system-packages -r requirements.txt
+
 COPY server.py .
 
 EXPOSE 5000
 
-# Scrape at runtime and launch server
-CMD ["sh", "-c", "node scrape.js && python3 server.py"]
-
+CMD ["python3", "server.py"]
